@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/daluisgarcia/golang-rest-websockets/models"
+	_ "github.com/lib/pq"
 )
 
 type PostgresRepository struct {
