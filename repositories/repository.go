@@ -6,17 +6,23 @@ import (
 	"github.com/daluisgarcia/golang-rest-websockets/models"
 )
 
-type UserRepository interface {
+type Repository interface {
+	Close() error
 	InsertUser(ctx context.Context, user *models.User) error
 	FindUserById(ctx context.Context, id string) (*models.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*models.User, error)
-	Close() error
+	InsertPost(ctx context.Context, post *models.Post) error
+	FindPostById(ctx context.Context, id string) (*models.Post, error)
 }
 
-var implementation UserRepository
+var implementation Repository
 
-func SetRepository(repo UserRepository) {
+func SetRepository(repo Repository) {
 	implementation = repo
+}
+
+func Close() error {
+	return implementation.Close()
 }
 
 func InsertUser(ctx context.Context, user *models.User) error {
@@ -31,6 +37,10 @@ func FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	return implementation.FindUserByEmail(ctx, email)
 }
 
-func Close() error {
-	return implementation.Close()
+func InsertPost(ctx context.Context, post *models.Post) error {
+	return implementation.InsertPost(ctx, post)
+}
+
+func FindPostById(ctx context.Context, id string) (*models.Post, error) {
+	return implementation.FindPostById(ctx, id)
 }
