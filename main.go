@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/daluisgarcia/golang-rest-websockets/handlers"
@@ -13,6 +14,7 @@ import (
 
 func BindRoutes(s server.Server, r *mux.Router) {
 	r.HandleFunc("/", handlers.HomeHandler(s)).Methods("GET")
+	r.HandleFunc("/signup", handlers.SignUpHandler(s)).Methods(http.MethodPost)
 }
 
 func main() {
