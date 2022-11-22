@@ -13,6 +13,8 @@ type Repository interface {
 	FindUserByEmail(ctx context.Context, email string) (*models.User, error)
 	InsertPost(ctx context.Context, post *models.Post) error
 	FindPostById(ctx context.Context, id string) (*models.Post, error)
+	UpdatePost(ctx context.Context, post *models.Post) error
+	DeletePost(ctx context.Context, id string, userId string) error
 }
 
 var implementation Repository
@@ -43,4 +45,12 @@ func InsertPost(ctx context.Context, post *models.Post) error {
 
 func FindPostById(ctx context.Context, id string) (*models.Post, error) {
 	return implementation.FindPostById(ctx, id)
+}
+
+func UpdatePost(ctx context.Context, post *models.Post) error {
+	return implementation.UpdatePost(ctx, post)
+}
+
+func DeletePost(ctx context.Context, id string, userId string) error {
+	return implementation.DeletePost(ctx, id, userId)
 }

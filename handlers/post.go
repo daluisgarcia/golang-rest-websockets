@@ -8,21 +8,22 @@ import (
 	"github.com/daluisgarcia/golang-rest-websockets/models"
 	"github.com/daluisgarcia/golang-rest-websockets/repositories"
 	"github.com/daluisgarcia/golang-rest-websockets/server"
+	"github.com/gorilla/mux"
 	"github.com/segmentio/ksuid"
 )
 
-type InsertPostRequest struct {
+type PostRequest struct {
 	PostContent string `json:"postContent"`
 }
 
-type InserPostResponse struct {
+type PostResponse struct {
 	Id          string `json:"id"`
 	PostContent string `json:"postContent"`
 }
 
 func InsertPostHandler(s server.Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var request InsertPostRequest
+		var request PostRequest
 		err := json.NewDecoder(r.Body).Decode(&request)
 
 		if err != nil {
@@ -61,10 +62,125 @@ func InsertPostHandler(s server.Server) http.HandlerFunc {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(InserPostResponse{
+			json.NewEncoder(w).Encode(PostResponse{
 				Id:          post.Id,
 				PostContent: post.PostContent,
 			})
+		} else {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+	}
+}
+
+func GetPostHandler(s server.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		params := mux.Vars(r)
+		post, err := repositories.FindPostById(r.Context(), params["id"])
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if post == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(post)
+	}
+}
+
+func UpdatePostHandler(s server.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := middleware.GetJwtTokenFromHeader(s, r)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if _, ok := token.Claims.(*models.AppClaims); ok && token.Valid {
+			params := mux.Vars(r)
+			var request PostRequest
+			err := json.NewDecoder(r.Body).Decode(&request)
+
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			post, err := repositories.FindPostById(r.Context(), params["id"])
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if post == nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			post.PostContent = request.PostContent
+
+			err = repositories.UpdatePost(r.Context(), post)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(PostResponse{
+				Id:          post.Id,
+				PostContent: post.PostContent,
+			})
+		} else {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+	}
+}
+
+func DeletePostHandler(s server.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := middleware.GetJwtTokenFromHeader(s, r)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if claims, ok := token.Claims.(*models.AppClaims); ok && token.Valid {
+			params := mux.Vars(r)
+			post, err := repositories.FindPostById(r.Context(), params["id"])
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			if post == nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			err = repositories.DeletePost(r.Context(), post.Id, claims.UserId)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNoContent)
 		} else {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return

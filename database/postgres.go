@@ -125,3 +125,13 @@ func (repo *PostgresRepository) FindPostById(ctx context.Context, id string) (*m
 
 	return &post, nil
 }
+
+func (repo *PostgresRepository) UpdatePost(ctx context.Context, post *models.Post) error {
+	_, err := repo.db.ExecContext(ctx, "UPDATE posts SET post_content = $1 WHERE id = $2 AND user_id = $3", post.PostContent, post.Id, post.UserId)
+	return err
+}
+
+func (repo *PostgresRepository) DeletePost(ctx context.Context, id string, userId string) error {
+	_, err := repo.db.ExecContext(ctx, "DELETE FROM posts WHERE id = $1 AND user_id = $2", id, userId)
+	return err
+}
