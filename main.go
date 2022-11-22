@@ -7,15 +7,19 @@ import (
 	"os"
 
 	"github.com/daluisgarcia/golang-rest-websockets/handlers"
+	"github.com/daluisgarcia/golang-rest-websockets/middleware"
 	"github.com/daluisgarcia/golang-rest-websockets/server"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
 func BindRoutes(s server.Server, r *mux.Router) {
+	r.Use(middleware.CheckAuthMiddleware(s)) // Applies a middleware to all routes
+
 	r.HandleFunc("/", handlers.HomeHandler(s)).Methods("GET")
 	r.HandleFunc("/signup", handlers.SignUpHandler(s)).Methods(http.MethodPost)
 	r.HandleFunc("/login", handlers.LoginHandler(s)).Methods(http.MethodPost)
+	r.HandleFunc("/me", handlers.MeHandler(s)).Methods(http.MethodGet)
 }
 
 func main() {

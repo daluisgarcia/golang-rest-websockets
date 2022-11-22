@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/daluisgarcia/golang-rest-websockets/middleware"
 	"github.com/daluisgarcia/golang-rest-websockets/models"
 	"github.com/daluisgarcia/golang-rest-websockets/repositories"
 	"github.com/daluisgarcia/golang-rest-websockets/server"
@@ -126,5 +127,32 @@ func LoginHandler(s server.Server) http.HandlerFunc {
 		json.NewEncoder(w).Encode(LoginResponse{
 			Token: tokenString,
 		})
+	}
+}
+
+func MeHandler(s server.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := middleware.GetJwtTokenFromHeader(s, r)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if claims, ok := token.Claims.(*models.AppClaims); ok && token.Valid {
+			user, err := repositories.FindUserById(r.Context(), claims.UserId)
+
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Add("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(user)
+		}else {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
 	}
 }
