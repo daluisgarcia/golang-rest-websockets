@@ -3,15 +3,17 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/daluisgarcia/golang-rest-websockets/models"
 	"github.com/daluisgarcia/golang-rest-websockets/repositories"
 	"github.com/daluisgarcia/golang-rest-websockets/server"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/segmentio/ksuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type SignUpRequest struct {
+type SignUpAndLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -21,9 +23,13 @@ type SignUpResponse struct {
 	Email string `json:"email"`
 }
 
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
 func SignUpHandler(s server.Server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var request = SignUpRequest{}
+		var request = SignUpAndLoginRequest{}
 		err := json.NewDecoder(r.Body).Decode(&request)
 
 		if err != nil {
@@ -68,6 +74,57 @@ func SignUpHandler(s server.Server) http.HandlerFunc {
 		json.NewEncoder(w).Encode(SignUpResponse{
 			Id:    user.Id,
 			Email: user.Email,
+		})
+	}
+}
+
+func LoginHandler(s server.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var request = SignUpAndLoginRequest{}
+		err := json.NewDecoder(r.Body).Decode(&request)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		user, err := repositories.FindUserByEmail(r.Context(), request.Email)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if user == nil {
+			http.Error(w, "Invalid Credentials", http.StatusUnauthorized)
+			return
+		}
+
+		if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
+			http.Error(w, "Invalid Credentials", http.StatusUnauthorized)
+			return
+		}
+
+		claims := models.AppClaims{
+			UserId: user.Id,
+			StandardClaims: jwt.StandardClaims{
+				ExpiresAt: time.Now().Add(2 * time.Hour * 24).Unix(),
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString([]byte(s.Config().JWTSecret))
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		json.NewEncoder(w).Encode(LoginResponse{
+			Token: tokenString,
 		})
 	}
 }

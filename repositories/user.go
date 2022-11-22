@@ -9,6 +9,7 @@ import (
 type UserRepository interface {
 	InsertUser(ctx context.Context, user *models.User) error
 	FindUserById(ctx context.Context, id string) (*models.User, error)
+	FindUserByEmail(ctx context.Context, email string) (*models.User, error)
 	Close() error
 }
 
@@ -24,6 +25,10 @@ func InsertUser(ctx context.Context, user *models.User) error {
 
 func FindUserById(ctx context.Context, id string) (*models.User, error) {
 	return implementation.FindUserById(ctx, id)
+}
+
+func FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return implementation.FindUserByEmail(ctx, email)
 }
 
 func Close() error {

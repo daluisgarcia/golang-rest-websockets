@@ -31,7 +31,36 @@ func (repo *PostgresRepository) InsertUser(ctx context.Context, user *models.Use
 }
 
 func (repo *PostgresRepository) FindUserById(ctx context.Context, id string) (*models.User, error) {
-	rows, err := repo.db.QueryContext(ctx, "SELECT id, email, password FROM users WHERE id = $1", id)
+	rows, err := repo.db.QueryContext(ctx, "SELECT id, email FROM users WHERE id = $1", id)
+
+	defer func() { // Alows to validate the error after the function returns
+		err := rows.Close()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var user = models.User{}
+	for rows.Next() {
+		if err := rows.Scan(&user.Id, &user.Email); err == nil {
+			return &user, err
+		}
+	}
+
+	if err == rows.Err() {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (repo *PostgresRepository) FindUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	rows, err := repo.db.QueryContext(ctx, "SELECT id, email, password FROM users WHERE email = $1", email)
 
 	defer func() { // Alows to validate the error after the function returns
 		err := rows.Close()
