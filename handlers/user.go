@@ -46,6 +46,10 @@ func SignUpHandler(s server.Server) http.HandlerFunc {
 		err = repositories.InsertUser(r.Context(), &user)
 
 		if err != nil {
+			if err.Error() == "pq: duplicate key value violates unique constraint \"users_email_key\"" {
+				http.Error(w, "Email already exists", http.StatusBadRequest)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
