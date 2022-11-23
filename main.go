@@ -14,18 +14,22 @@ import (
 )
 
 func BindRoutes(s server.Server, r *mux.Router) {
-	r.Use(middleware.CheckAuthMiddleware(s)) // Applies a middleware to all routes
-
+	// Free of authentication routes
 	r.HandleFunc("/", handlers.HomeHandler(s)).Methods("GET")
 	r.HandleFunc("/signup", handlers.SignUpHandler(s)).Methods(http.MethodPost)
 	r.HandleFunc("/login", handlers.LoginHandler(s)).Methods(http.MethodPost)
-	r.HandleFunc("/me", handlers.MeHandler(s)).Methods(http.MethodGet)
-	r.HandleFunc("/posts", handlers.InsertPostHandler(s)).Methods(http.MethodPost)
 	r.HandleFunc("/posts/{id}", handlers.GetPostHandler(s)).Methods(http.MethodGet)
-	r.HandleFunc("/posts/{id}", handlers.UpdatePostHandler(s)).Methods(http.MethodPut)
-	r.HandleFunc("/posts/{id}", handlers.DeletePostHandler(s)).Methods(http.MethodDelete)
 	r.HandleFunc("/posts", handlers.ListPostsHandler(s)).Methods(http.MethodGet)
 	r.HandleFunc("/ws", s.Hub().HandleWebSocket)
+
+	api := r.PathPrefix("/api/v1").Subrouter() // Defining a subrouter for the API
+
+	api.Use(middleware.CheckAuthMiddleware(s)) // Applies a middleware to all routes of the api
+
+	api.HandleFunc("/me", handlers.MeHandler(s)).Methods(http.MethodGet)
+	api.HandleFunc("/posts", handlers.InsertPostHandler(s)).Methods(http.MethodPost)
+	api.HandleFunc("/posts/{id}", handlers.UpdatePostHandler(s)).Methods(http.MethodPut)
+	api.HandleFunc("/posts/{id}", handlers.DeletePostHandler(s)).Methods(http.MethodDelete)
 }
 
 func main() {
