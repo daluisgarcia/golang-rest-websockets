@@ -10,6 +10,7 @@ import (
 	"github.com/daluisgarcia/golang-rest-websockets/repositories"
 	"github.com/daluisgarcia/golang-rest-websockets/websockets"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 type Config struct {
@@ -58,20 +59,26 @@ func (b *Broker) Hub() *websockets.Hub {
 }
 
 func (b *Broker) Start(binder func(s Server, r *mux.Router)) {
-	b.router = mux.NewRouter()
-	b.hub = websockets.NewHub()
+	if b.router == nil || b.config == nil {
+		log.Fatal("Server not initialized correctly")
+	}
+
+	handler := cors.Default().Handler(b.router)
 	binder(b, b.router)
+
 	repo, err := database.NewPostgresRepository(b.config.DatabaseUrl)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	go b.Hub().Run()
+
 	repositories.SetRepository(repo)
 
 	log.Println("Server started on port", b.config.Port)
 
-	if err := http.ListenAndServe(":"+b.config.Port, b.router); err != nil {
+	if err := http.ListenAndServe(":"+b.config.Port, handler); err != nil {
 		log.Fatal("Error when starting the server: ", err)
 	}
 
