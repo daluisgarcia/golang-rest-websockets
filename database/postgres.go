@@ -56,7 +56,7 @@ func (repo *PostgresRepository) FindUserById(ctx context.Context, id string) (*m
 		}
 	}
 
-	if err == rows.Err() {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +85,7 @@ func (repo *PostgresRepository) FindUserByEmail(ctx context.Context, email strin
 		}
 	}
 
-	if err == rows.Err() {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (repo *PostgresRepository) FindPostById(ctx context.Context, id string) (*m
 		}
 	}
 
-	if err == rows.Err() {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -134,4 +134,43 @@ func (repo *PostgresRepository) UpdatePost(ctx context.Context, post *models.Pos
 func (repo *PostgresRepository) DeletePost(ctx context.Context, id string, userId string) error {
 	_, err := repo.db.ExecContext(ctx, "DELETE FROM posts WHERE id = $1 AND user_id = $2", id, userId)
 	return err
+}
+
+func (repo *PostgresRepository) ListPosts(ctx context.Context, page uint64, userId string) ([]*models.Post, error) {
+	var postPerPage int64 = 10
+	if page <= 0 {
+		page = 1
+	}
+
+	rows, err := repo.db.QueryContext(
+		ctx,
+		"SELECT id, post_content, user_id, created_at FROM posts WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+		userId, postPerPage, (page-1)*uint64(postPerPage),
+	)
+
+	defer func() { // Alows to validate the error after the function returns
+		err := rows.Close()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var posts []*models.Post
+	for rows.Next() {
+		var post = models.Post{}
+		if err := rows.Scan(&post.Id, &post.PostContent, &post.UserId, &post.CreatedAt); err == nil {
+			posts = append(posts, &post)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return posts, nil
 }

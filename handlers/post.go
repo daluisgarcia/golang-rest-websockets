@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/daluisgarcia/golang-rest-websockets/middleware"
 	"github.com/daluisgarcia/golang-rest-websockets/models"
@@ -186,5 +187,45 @@ func DeletePostHandler(s server.Server) http.HandlerFunc {
 			return
 		}
 
+	}
+}
+
+func ListPostsHandler(s server.Server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := middleware.GetJwtTokenFromHeader(s, r)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		if claims, ok := token.Claims.(*models.AppClaims); ok && token.Valid {
+			pageStr := r.URL.Query().Get("page")
+
+			var page = uint64(0)
+
+			if pageStr != "" {
+				page, err = strconv.ParseUint(pageStr, 10, 64)
+
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
+
+			posts, err := repositories.ListPosts(r.Context(), page, claims.UserId)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(posts)
+		} else {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
 	}
 }
