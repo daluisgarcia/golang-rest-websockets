@@ -61,6 +61,15 @@ func InsertPostHandler(s server.Server) http.HandlerFunc {
 				return
 			}
 
+			// Build a message to be sent to the websocket
+			var postWebSocketMessage = models.WebSocketMessage{
+				Type:    "Post Created",
+				Payload: post,
+			}
+
+			// Notifies through websockets that a new post has been created
+			s.Hub().Broadcast(postWebSocketMessage, nil)
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(PostResponse{

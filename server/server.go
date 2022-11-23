@@ -8,6 +8,7 @@ import (
 
 	"github.com/daluisgarcia/golang-rest-websockets/database"
 	"github.com/daluisgarcia/golang-rest-websockets/repositories"
+	"github.com/daluisgarcia/golang-rest-websockets/websockets"
 	"github.com/gorilla/mux"
 )
 
@@ -19,11 +20,13 @@ type Config struct {
 
 type Server interface {
 	Config() *Config
+	Hub() *websockets.Hub
 }
 
 type Broker struct {
 	config *Config
 	router *mux.Router
+	hub    *websockets.Hub
 }
 
 func NewServer(ctx context.Context, config *Config) (*Broker, error) {
@@ -42,6 +45,7 @@ func NewServer(ctx context.Context, config *Config) (*Broker, error) {
 	return &Broker{
 		config: config,
 		router: mux.NewRouter(),
+		hub:    websockets.NewHub(),
 	}, nil
 }
 
@@ -49,8 +53,13 @@ func (b *Broker) Config() *Config {
 	return b.config
 }
 
+func (b *Broker) Hub() *websockets.Hub {
+	return b.hub
+}
+
 func (b *Broker) Start(binder func(s Server, r *mux.Router)) {
 	b.router = mux.NewRouter()
+	b.hub = websockets.NewHub()
 	binder(b, b.router)
 	repo, err := database.NewPostgresRepository(b.config.DatabaseUrl)
 
